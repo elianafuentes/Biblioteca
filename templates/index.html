@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Biblioteca</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .card-menu {
+            transition: transform 0.3s;
+        }
+        .card-menu:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-book-open me-2"></i>Sistema de Gestión de Biblioteca
+            </a>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="display-4 text-center">Sistema de Gestión de Biblioteca</h1>
+                <p class="lead text-center">Gestione autores, libros, ediciones, copias, usuarios y préstamos</p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Gestión de Autores -->
+            <div class="col-md-4">
+                <div class="card h-100 card-menu">
+                    <div class="card-body text-center">
+                        <i class="fas fa-users fa-4x mb-3 text-primary"></i>
+                        <h3 class="card-title">Autores</h3>
+                        <p class="card-text">Gestione los autores registrados en el sistema.</p>
+                        <a href="{{ url_for('listar_autores') }}" class="btn btn-primary">Ir a Autores</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestión de Libros -->
+            <div class="col-md-4">
+                <div class="card h-100 card-menu">
+                    <div class="card-body text-center">
+                        <i class="fas fa-book fa-4x mb-3 text-success"></i>
+                        <h3 class="card-title">Libros</h3>
+                        <p class="card-text">Gestione los libros disponibles en la biblioteca.</p>
+                        <a href="{{ url_for('listar_libros') }}" class="btn btn-success">Ir a Libros</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestión de Ediciones -->
+            <div class="col-md-4">
+                <div class="card h-100 card-menu">
+                    <div class="card-body text-center">
+                        <i class="fas fa-bookmark fa-4x mb-3 text-info"></i>
+                        <h3 class="card-title">Ediciones</h3>
+                        <p class="card-text">Gestione las diferentes ediciones de los libros.</p>
+                        <a href="{{ url_for('listar_ediciones') }}" class="btn btn-info text-white">Ir a Ediciones</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestión de Copias -->
+            <div class="col-md-4 mt-4">
+                <div class="card h-100 card-menu">
+                    <div class="card-body text-center">
+                        <i class="fas fa-copy fa-4x mb-3 text-warning"></i>
+                        <h3 class="card-title">Copias</h3>
+                        <p class="card-text">Administre las copias físicas de los libros disponibles.</p>
+                        <a href="{{ url_for('listar_copias') }}" class="btn btn-warning text-white">Ir a Copias</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestión de Usuarios -->
+            <div class="col-md-4 mt-4">
+                <div class="card h-100 card-menu">
+                    <div class="card-body text-center">
+                        <i class="fas fa-user-graduate fa-4x mb-3 text-danger"></i>
+                        <h3 class="card-title">Usuarios</h3>
+                        <p class="card-text">Gestione los usuarios registrados en el sistema.</p>
+                        <a href="{{ url_for('listar_usuarios') }}" class="btn btn-danger">Ir a Usuarios</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestión de Préstamos -->
+            <div class="col-md-4 mt-4">
+                <div class="card h-100 card-menu">
+                    <div class="card-body text-center">
+                        <i class="fas fa-exchange-alt fa-4x mb-3 text-secondary"></i>
+                        <h3 class="card-title">Préstamos</h3>
+                        <p class="card-text">Administre los préstamos y devoluciones de libros.</p>
+                        <a href="{{ url_for('listar_prestamos_activos') }}" class="btn btn-secondary">Ir a Préstamos</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consultas -->
+            <div class="col-md-12 mt-4">
+                <div class="card h-100 card-menu">
+                    <div class="card-body text-center">
+                        <i class="fas fa-search fa-4x mb-3 text-dark"></i>
+                        <h3 class="card-title">Consultas</h3>
+                        <p class="card-text">Realice búsquedas y consultas en el sistema de biblioteca.</p>
+                        <a href="{{ url_for('menu_consultas') }}" class="btn btn-dark">Ir a Consultas</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container text-center">
+            <p>&copy; 2025 Sistema de Gestión de Biblioteca</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

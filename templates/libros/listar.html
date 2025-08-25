@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Libros - Sistema de Biblioteca</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/"><i class="fas fa-book-open me-2"></i>Sistema de Biblioteca</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Inicio</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
+                            Libros
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item active" href="{{ url_for('listar_libros') }}">Listar Libros</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('agregar_libro') }}">Agregar Libro</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-book me-2"></i>Libros</h1>
+            <a href="{{ url_for('agregar_libro') }}" class="btn btn-success">
+                <i class="fas fa-plus me-2"></i>Nuevo Libro
+            </a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if libros %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Título</th>
+                            <th>Autores</th>
+                            <th>Ediciones</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for libro in libros %}
+                            <tr>
+                                <td>{{ libro._id }}</td>
+                                <td>{{ libro.titulo }}</td>
+                                <td>
+                                    {% if libro.autores %}
+                                        <ul class="list-unstyled mb-0">
+                                            {% for autor in libro.autores %}
+                                                <li>{{ autor.nombre }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <span class="text-muted">Sin autores</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set ediciones = biblioteca.db.ediciones.find({"libro_id": libro._id}) %}
+                                    {% set total_ediciones = biblioteca.db.ediciones.count_documents({"libro_id": libro._id}) %}
+                                    <span class="badge bg-info">{{ total_ediciones }}</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{{ url_for('editar_libro', libro_id=libro._id) }}" class="btn btn-sm btn-warning text-white">
+                                            <i class="fas fa-edit me-1"></i>Editar
+                                        </a>
+                                        <a href="{{ url_for('eliminar_libro', libro_id=libro._id) }}" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-trash-alt me-1"></i>Eliminar
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>No hay libros registrados en el sistema.
+            </div>
+        {% endif %}
+    </div>
+
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container text-center">
+            <p>&copy; 2025 Sistema de Gestión de Biblioteca</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

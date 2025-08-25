@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscar Libros - Sistema de Biblioteca</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/"><i class="fas fa-book-open me-2"></i>Sistema de Biblioteca</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('menu_consultas') }}">Consultas</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-book me-2"></i>Buscar Libros por Título</h1>
+            <a href="{{ url_for('menu_consultas') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Volver a Consultas
+            </a>
+        </div>
+
+        <form method="GET" action="{{ url_for('buscar_libros') }}" class="row g-3 mb-4">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control" name="titulo" placeholder="Ingrese el título o parte del título" value="{{ request.args.get('titulo', '') }}">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">Buscar</button>
+            </div>
+        </form>
+
+        {% if resultados %}
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">Resultados de la Búsqueda</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="tablaResultados">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Título</th>
+                                    <th>Autor(es)</th>
+                                    <th>Género</th>
+                                    <th>Ediciones</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for libro in resultados %}
+                                    <tr>
+                                        <td>{{ libro._id }}</td>
+                                        <td>{{ libro.titulo }}</td>
+                                        <td>
+                                            {% if libro.autores %}
+                                                {% for autor in libro.autores %}
+                                                    {{ autor.nombre }}<br>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">No disponible</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if libro.genero %}
+                                                {{ libro.genero }}
+                                            {% else %}
+                                                <span class="text-muted">No disponible</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ libro.num_ediciones|default('0') }}</td>
+                                        <td>
+                                            <a href="{{ url_for('listar_ediciones') }}?libro_id={{ libro._id }}" class="btn btn-sm btn-info text-white">
+                                                <i class="fas fa-book me-1"></i>Ver ediciones
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% elif 'titulo' in request.args %}
+            <div class="alert alert-info mt-4">
+                <i class="fas fa-info-circle me-2"></i>No se encontraron resultados para la búsqueda "{{ request.args.get('titulo') }}".
+            </div>
+        {% endif %}
+    </div>
+
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container text-center">
+            <p>&copy; 2025 Sistema de Gestión de Biblioteca</p>
+        </div>
+    </footer>
+
+    <!-- jQuery y DataTables -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#tablaResultados').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json'
+                },
+                order: [[1, 'asc']],
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50, 100]
+            });
+        });
+    </script>
+</body>
+</html>

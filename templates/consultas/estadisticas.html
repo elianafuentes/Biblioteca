@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas de Préstamos - Sistema de Biblioteca</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="/"><i class="fas fa-book-open me-2"></i>Sistema de Biblioteca</a>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <h1 class="mb-4"><i class="fas fa-chart-bar me-2"></i>Estadísticas de Préstamos</h1>
+
+    <!-- Tarjetas resumen -->
+    <div class="row mb-4">
+        {% for title, value, color, icon in [
+            ('Total Préstamos', total_prestamos, 'primary', 'fa-book'),
+            ('Préstamos Activos', prestamos_activos, 'success', 'fa-book-reader'),
+            ('Libros Disponibles', libros_disponibles, 'warning', 'fa-box'),
+            ('Préstamos Atrasados', prestamos_atrasados, 'danger', 'fa-exclamation-triangle')
+        ] %}
+        <div class="col-md-3">
+            <div class="card text-white bg-{{ color }} h-100">
+                <div class="card-body text-center">
+                    <h2 class="display-6">{{ value }}</h2>
+                    <h6 class="card-title">{{ title }}</h6>
+                    <i class="fas {{ icon }} fa-2x mt-2 opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="row mb-4">
+        <!-- Gráfico por mes -->
+        <div class="col-md-8">
+            <div class="card h-100">
+                <div class="card-header bg-light"><h5>Préstamos por Mes</h5></div>
+                <div class="card-body"><canvas id="prestamosPorMes"></canvas></div>
+            </div>
+        </div>
+        <!-- Gráfico de estado -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-light"><h5>Estado de Préstamos</h5></div>
+                <div class="card-body"><canvas id="estadoPrestamos"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <!-- Libros más prestados -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-light"><h5>Libros Más Prestados</h5></div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr><th>#</th><th>Título</th><th>Autor(es)</th><th>Préstamos</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for libro in libros_populares %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ libro.titulo }}</td>
+                                <td>
+                                    {% if libro.autores %}
+                                        {% for autor in libro.autores %}
+                                            {{ autor.nombre }}{% if not loop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-muted">No disponible</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge bg-primary">{{ libro.conteo }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usuarios más activos -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-light"><h5>Usuarios Más Activos</h5></div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr><th>#</th><th>Nombre</th><th>RUT</th><th>Préstamos</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for usuario in usuarios_activos %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ usuario.nombre }} {{ usuario.apellido }}</td>
+                                <td>{{ usuario.RUT }}</td>
+                                <td><span class="badge bg-success">{{ usuario.conteo }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="bg-dark text-white py-4 mt-5">
+    <div class="container text-center">
+        <p>&copy; 2025 Sistema de Gestión de Biblioteca</p>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    // Gráfico por mes
+    new Chart(document.getElementById('prestamosPorMes').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: {{ meses|safe }},
+            datasets: [{
+                label: 'Préstamos',
+                data: {{ datos_prestamos_por_mes|safe }},
+                fill: false,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // Gráfico de estado
+    new Chart(document.getElementById('estadoPrestamos').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Activos', 'Devueltos', 'Atrasados'],
+            datasets: [{
+                data: [{{ prestamos_activos }}, {{ prestamos_devueltos }}, {{ prestamos_atrasados }}],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 99, 132, 0.7)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right'
+                }
+            }
+        }
+    });
+});
+</script>
+</body>
+</html>
+
+

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Copia - Sistema de Biblioteca</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/"><i class="fas fa-book-open me-2"></i>Sistema de Biblioteca</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Inicio</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
+                            Copias
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('listar_copias') }}">Listar Copias</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('agregar_copia') }}">Agregar Copia</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-edit me-2"></i>Editar Copia</h1>
+            <a href="{{ url_for('listar_copias') }}" class="btn btn-secondary">
+                <i class="fas fa-list me-2"></i>Volver a Copias
+            </a>
+        </div>
+
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Inicio</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('listar_copias') }}">Copias</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Editar</li>
+            </ol>
+        </nav>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edicion_id" class="form-label">Edición</label>
+                            <select name="edicion_id" id="edicion_id" class="form-select" required>
+                                <option value="">Seleccionar Edición</option>
+                                {% for edicion in ediciones %}
+                                <option value="{{ edicion._id }}" 
+                                    {% if copia.edicion_id == edicion._id %}selected{% endif %}>
+                                    {{ edicion.libro_info.titulo }} - 
+                                    {{ edicion.ISBN }} ({{ edicion.idioma }}, {{ edicion.anio }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="numero" class="form-label">Número de Copia</label>
+                            <input type="number" class="form-control" id="numero" name="numero" 
+                                   value="{{ copia.get('numero', '') }}" 
+                                   placeholder="Ingrese el número de copia" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="disponible" name="disponible" 
+                               {% if copia.get('disponible', False) %}checked{% endif %}>
+                        <label class="form-check-label" for="disponible">Copia Disponible</label>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('listar_copias') }}" class="btn btn-secondary me-2">
+                            <i class="fas fa-times me-1"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Actualizar Copia
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container text-center">
+            <p>&copy; 2025 Sistema de Gestión de Biblioteca</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
