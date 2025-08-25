@@ -60,6 +60,21 @@ def index():
     """Página principal"""
     return render_template('index.html')
 
+# pagina autor
+
+@app.route("/about")
+def about():
+    info = {
+        "app": "Sistema de Gestión de Biblioteca",
+        "autor": "Eliana Fuentes",
+        "stack": ["Flask", "MongoDB Atlas", "Gunicorn", "Render"],
+        "features": ["CRUD", "Préstamos/Devoluciones", "Agregaciones", "Validaciones"],
+        "repo": "https://github.com/elianafuentes/Biblioteca",
+        "demo": "https://sistema-de-gestion-de-biblioteca.onrender.com"
+    }
+    return render_template("about.html", info=info)
+
+
 # =================== GESTIÓN DE AUTORES ===================
 @app.route('/autores')
 def listar_autores():

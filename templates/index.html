@@ -9,9 +9,7 @@
     <!-- Font Awesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .card-menu {
-            transition: transform 0.3s;
-        }
+        .card-menu { transition: transform 0.3s; }
         .card-menu:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
@@ -24,6 +22,15 @@
             <a class="navbar-brand" href="/">
                 <i class="fas fa-book-open me-2"></i>Sistema de Gestión de Biblioteca
             </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div id="mainNav" class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('about') }}"><i class="fa-solid fa-circle-info me-1"></i>Acerca de</a></li>
+                </ul>
+            </div>
         </div>
     </nav>
 
@@ -124,7 +131,12 @@
 
     <footer class="bg-dark text-white py-4 mt-5">
         <div class="container text-center">
-            <p>&copy; 2025 Sistema de Gestión de Biblioteca</p>
+            <p class="mb-1">&copy; {{ current_year or 2025 }} Sistema de Gestión de Biblioteca</p>
+            <p class="mb-0">
+                <a class="text-white-50 text-decoration-none" href="{{ url_for('about') }}"><i class="fa-solid fa-circle-info me-1"></i>Acerca de</a> ·
+                <a class="text-white-50 text-decoration-none" href="https://github.com/elianafuentes/Biblioteca" target="_blank" rel="noopener"><i class="fab fa-github me-1"></i>Código</a> ·
+                <a class="text-white-50 text-decoration-none" href="https://sistema-de-gestion-de-biblioteca.onrender.com" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square me-1"></i>Demo</a>
+            </p>
         </div>
     </footer>
 
