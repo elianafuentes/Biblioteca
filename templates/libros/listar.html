@@ -37,7 +37,7 @@
 
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1><i class="fas fa-book me-2"></i>Libros</h1>
+            <h1 class="h3 mb-0"><i class="fas fa-book me-2"></i>Libros</h1>
             <a href="{{ url_for('agregar_libro') }}" class="btn btn-success">
                 <i class="fas fa-plus me-2"></i>Nuevo Libro
             </a>
@@ -56,26 +56,28 @@
 
         {% if libros %}
             <div class="table-responsive">
-                <table class="table table-striped table-hover">
+                <table class="table table-striped table-hover align-middle">
                     <thead class="table-dark">
                         <tr>
-                            <th>ID</th>
+                            <th style="white-space: nowrap;">ID</th>
                             <th>Título</th>
                             <th>Autores</th>
-                            <th>Ediciones</th>
-                            <th>Acciones</th>
+                            <th style="width: 120px;">Año</th>
+                            <th style="width: 180px;">Género</th>
+                            <th style="width: 120px;">Ediciones</th>
+                            <th style="width: 190px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for libro in libros %}
                             <tr>
-                                <td>{{ libro._id }}</td>
+                                <td class="text-muted" style="font-size: .9rem;">{{ libro._id }}</td>
                                 <td>{{ libro.titulo }}</td>
                                 <td>
                                     {% if libro.autores %}
                                         <ul class="list-unstyled mb-0">
                                             {% for autor in libro.autores %}
-                                                <li>{{ autor.nombre }}</li>
+                                                <li><i class="fa-regular fa-user me-1 text-secondary"></i>{{ autor.nombre }}</li>
                                             {% endfor %}
                                         </ul>
                                     {% else %}
@@ -83,9 +85,23 @@
                                     {% endif %}
                                 </td>
                                 <td>
+                                    {% if libro.anio_publicacion is defined and libro.anio_publicacion is not none %}
+                                        <span class="badge bg-secondary">{{ libro.anio_publicacion }}</span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if libro.genero %}
+                                        <span class="badge bg-info text-dark">{{ libro.genero }}</span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
                                     {% set ediciones = biblioteca.db.ediciones.find({"libro_id": libro._id}) %}
                                     {% set total_ediciones = biblioteca.db.ediciones.count_documents({"libro_id": libro._id}) %}
-                                    <span class="badge bg-info">{{ total_ediciones }}</span>
+                                    <span class="badge bg-primary" title="Cantidad de ediciones">{{ total_ediciones }}</span>
                                 </td>
                                 <td>
                                     <div class="btn-group">

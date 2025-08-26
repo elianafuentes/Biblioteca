@@ -157,23 +157,43 @@ def listar_libros():
 def agregar_libro():
     """Agregar un nuevo libro"""
     autores = list(biblioteca.db.autores.find())
-    
+
     if not autores:
         flash("No hay autores registrados. Primero debe agregar autores.", "warning")
         return redirect(url_for('agregar_autor'))
-    
+
     if request.method == 'POST':
-        titulo = request.form.get('titulo')
+        titulo = (request.form.get('titulo') or '').strip()
         autores_ids = request.form.getlist('autores')
-        
-        if not titulo.strip():
+
+        anio_publicacion_raw = (request.form.get('anio_publicacion') or '').strip()
+        genero = (request.form.get('genero') or '').strip()
+
+        # Validaciones básicas
+        if not titulo:
             flash("El título del libro no puede estar vacío.", "danger")
             return render_template('libros/agregar.html', autores=autores)
-        
+
         if not autores_ids:
             flash("Debe seleccionar al menos un autor.", "danger")
             return render_template('libros/agregar.html', autores=autores)
-        
+
+        # Validar año
+        if not anio_publicacion_raw.isdigit():
+            flash("El año de publicación debe ser un número.", "danger")
+            return render_template('libros/agregar.html', autores=autores)
+
+        anio_publicacion = int(anio_publicacion_raw)
+        from datetime import datetime
+        current_year = datetime.now().year
+        if anio_publicacion < 1450 or anio_publicacion > current_year + 1:
+            flash(f"El año de publicación debe estar entre 1450 y {current_year + 1}.", "danger")
+            return render_template('libros/agregar.html', autores=autores)
+
+        if not genero:
+            flash("El género no puede estar vacío.", "danger")
+            return render_template('libros/agregar.html', autores=autores)
+
         # Preparar autores
         autores_seleccionados = []
         for autor_id in autores_ids:
@@ -183,17 +203,19 @@ def agregar_libro():
                     "autor_id": autor['_id'],
                     "nombre": autor['nombre']
                 })
-        
+
         # Insertar libro
         libro_data = {
             "titulo": titulo,
-            "autores": autores_seleccionados
+            "autores": autores_seleccionados,
+            "anio_publicacion": anio_publicacion,
+            "genero": genero
         }
-        
+
         libro_id = biblioteca.db.libros.insert_one(libro_data).inserted_id
         flash(f"Libro agregado correctamente con ID: {libro_id}", "success")
         return redirect(url_for('listar_libros'))
-    
+
     return render_template('libros/agregar.html', autores=autores)
 
 @app.route('/libros/editar/<libro_id>', methods=['GET', 'POST'])
@@ -201,26 +223,48 @@ def editar_libro(libro_id):
     """Editar un libro existente"""
     libro = biblioteca.db.libros.find_one({"_id": ObjectId(libro_id)})
     autores = list(biblioteca.db.autores.find())
-    
-    
+
     if not libro:
         flash("No se encontró el libro.", "danger")
         return redirect(url_for('listar_libros'))
-    
+
     # Obtener IDs de autores actuales del libro
     autores_actuales = [str(autor['autor_id']) for autor in libro.get('autores', [])]
-    
+
     if request.method == 'POST':
-        titulo = request.form.get('titulo')
+        titulo = (request.form.get('titulo') or '').strip()
         autores_ids = request.form.getlist('autores')
-        
-        if not titulo.strip():
+
+        anio_publicacion_raw = (request.form.get('anio_publicacion') or '').strip()
+        genero = (request.form.get('genero') or '').strip()
+
+        if not titulo:
             flash("El título del libro no puede estar vacío.", "danger")
-            return render_template('libros/editar.html', libro=libro, autores=autores, autores_actuales=autores_actuales)
-        
-        # Actualizar título
+            return render_template('libros/editar.html', libro=libro, autores=autores, autores_actuales=autores_actuales, biblioteca=biblioteca)
+
         updates = {"titulo": titulo}
-        
+
+        # Validar y actualizar año/género
+        if anio_publicacion_raw:
+            if not anio_publicacion_raw.isdigit():
+                flash("El año de publicación debe ser un número.", "danger")
+                return render_template('libros/editar.html', libro=libro, autores=autores, autores_actuales=autores_actuales, biblioteca=biblioteca)
+            anio_publicacion = int(anio_publicacion_raw)
+            from datetime import datetime
+            current_year = datetime.now().year
+            if anio_publicacion < 1450 or anio_publicacion > current_year + 1:
+                flash(f"El año de publicación debe estar entre 1450 y {current_year + 1}.", "danger")
+                return render_template('libros/editar.html', libro=libro, autores=autores, autores_actuales=autores_actuales, biblioteca=biblioteca)
+            updates["anio_publicacion"] = anio_publicacion
+        else:
+            # Si viene vacío, permite quitarlo si quieres:
+            updates["anio_publicacion"] = None
+
+        if genero:
+            updates["genero"] = genero
+        else:
+            updates["genero"] = None
+
         # Actualizar autores si se seleccionaron
         if autores_ids:
             autores_seleccionados = []
@@ -232,15 +276,15 @@ def editar_libro(libro_id):
                         "nombre": autor['nombre']
                     })
             updates["autores"] = autores_seleccionados
-        
+
         biblioteca.db.libros.update_one(
             {"_id": ObjectId(libro_id)},
             {"$set": updates}
         )
-        
+
         flash("Libro actualizado correctamente.", "success")
         return redirect(url_for('listar_libros'))
-    
+
     return render_template('libros/editar.html', libro=libro, autores=autores, autores_actuales=autores_actuales, biblioteca=biblioteca)
 
 @app.route('/libros/eliminar/<libro_id>', methods=['GET', 'POST'])
@@ -267,194 +311,223 @@ def eliminar_libro(libro_id):
     return render_template('libros/eliminar.html', libro=libro, biblioteca=biblioteca)
 
 # =================== GESTIÓN DE EDICIONES ===================
+from bson.objectid import ObjectId
+from flask import render_template, request, redirect, url_for, flash
+
 @app.route('/ediciones')
 def listar_ediciones():
     """Listar todas las ediciones"""
     pipeline = [
-        {
-            "$lookup": {
-                "from": "libros",
-                "localField": "libro_id",
-                "foreignField": "_id",
-                "as": "libro_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$libro_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        }
+        {"$lookup": {
+            "from": "libros",
+            "localField": "libro_id",
+            "foreignField": "_id",
+            "as": "libro_info"
+        }},
+        {"$unwind": {"path": "$libro_info", "preserveNullAndEmptyArrays": True}}
     ]
-    
     ediciones = list(biblioteca.db.ediciones.aggregate(pipeline))
     return render_template('ediciones/listar.html', ediciones=ediciones)
+
+
 @app.route('/ediciones/agregar', methods=['GET', 'POST'])
 def agregar_edicion():
     """Agregar una nueva edición"""
     libros = list(biblioteca.db.libros.find())
-    
+
     if not libros:
         flash("No hay libros registrados. Primero debe agregar libros.", "warning")
-        return redirect(url_for('agregar_libro'))  # Indenta este return dentro del if
-    
+        return redirect(url_for('agregar_libro'))
+
     if request.method == 'POST':
-        isbn = request.form.get('isbn')
-        anio = request.form.get('anio')
-        idioma = request.form.get('idioma')
+        isbn = (request.form.get('isbn') or '').strip()
+        anio_raw = (request.form.get('anio') or '').strip()
+        idioma = (request.form.get('idioma') or '').strip()
         libro_id = request.form.get('libro_id')
-        
-        # Validaciones
-        if not isbn or not anio or not idioma or not libro_id:
+
+        editorial = (request.form.get('editorial') or '').strip()
+        formato = (request.form.get('formato') or '').strip()   # tapa_dura | tapa_blanda | ebook | audiolibro
+        paginas_raw = (request.form.get('paginas') or '').strip()
+
+        # Validaciones de obligatorios
+        if any(not v for v in [isbn, anio_raw, idioma, libro_id, editorial, formato, paginas_raw]):
             flash("Todos los campos son obligatorios.", "danger")
             return render_template('ediciones/agregar.html', libros=libros)
-        
-        # Verificar si ya existe una edición con ese ISBN
+
+        # ISBN único
         if biblioteca.db.ediciones.find_one({"ISBN": isbn}):
             flash(f"Ya existe una edición con el ISBN {isbn}.", "danger")
             return render_template('ediciones/agregar.html', libros=libros)
-        
+
+        # Año
         try:
-            anio = int(anio)
+            anio = int(anio_raw)
         except ValueError:
             flash("El año debe ser un número.", "danger")
             return render_template('ediciones/agregar.html', libros=libros)
-        
+
+        from datetime import datetime
+        current_year = datetime.now().year
+        if anio < 1450 or anio > current_year + 1:
+            flash(f"El año debe estar entre 1450 y {current_year + 1}.", "danger")
+            return render_template('ediciones/agregar.html', libros=libros)
+
+        # Páginas
+        try:
+            paginas = int(paginas_raw)
+            if paginas <= 0:
+                raise ValueError
+        except ValueError:
+            flash("Páginas debe ser un entero positivo.", "danger")
+            return render_template('ediciones/agregar.html', libros=libros)
+
+        # Formato
+        formatos_validos = {"tapa_dura", "tapa_blanda", "ebook", "audiolibro"}
+        if formato not in formatos_validos:
+            flash("Formato inválido.", "danger")
+            return render_template('ediciones/agregar.html', libros=libros)
+
         edicion_data = {
             "ISBN": isbn,
             "anio": anio,
             "idioma": idioma,
-            "libro_id": ObjectId(libro_id)
+            "libro_id": ObjectId(libro_id),
+            "editorial": editorial,
+            "formato": formato,
+            "paginas": paginas
         }
-        
+
         edicion_id = biblioteca.db.ediciones.insert_one(edicion_data).inserted_id
         flash(f"Edición agregada correctamente con ID: {edicion_id}", "success")
         return redirect(url_for('listar_ediciones'))
-    
-    # Falta esta línea crucial: retornar el template para GET requests
+
     return render_template('ediciones/agregar.html', libros=libros)
-    
+
+
 @app.route('/ediciones/editar/<edicion_id>', methods=['GET', 'POST'])
 def editar_edicion(edicion_id):
     """Editar una edición existente"""
-    # Obtener la edición con información del libro
     pipeline = [
-        {
-            "$match": {"_id": ObjectId(edicion_id)}
-        },
-        {
-            "$lookup": {
-                "from": "libros",
-                "localField": "libro_id",
-                "foreignField": "_id",
-                "as": "libro_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$libro_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        }
+        {"$match": {"_id": ObjectId(edicion_id)}},
+        {"$lookup": {
+            "from": "libros",
+            "localField": "libro_id",
+            "foreignField": "_id",
+            "as": "libro_info"
+        }},
+        {"$unwind": {"path": "$libro_info", "preserveNullAndEmptyArrays": True}}
     ]
-    
     resultado = list(biblioteca.db.ediciones.aggregate(pipeline))
-    
+
     if not resultado:
         flash("No se encontró la edición.", "danger")
         return redirect(url_for('listar_ediciones'))
-    
+
     edicion = resultado[0]
     libros = list(biblioteca.db.libros.find())
-    
+
     if request.method == 'POST':
-        isbn = request.form.get('isbn')
-        anio = request.form.get('anio')
-        idioma = request.form.get('idioma')
+        isbn = (request.form.get('isbn') or '').strip()
+        anio_raw = (request.form.get('anio') or '').strip()
+        idioma = (request.form.get('idioma') or '').strip()
         libro_id = request.form.get('libro_id')
-        
-        # Validaciones
-        if not isbn or not anio or not idioma or not libro_id:
+
+        editorial = (request.form.get('editorial') or '').strip()
+        formato = (request.form.get('formato') or '').strip()
+        paginas_raw = (request.form.get('paginas') or '').strip()
+
+        if any(not v for v in [isbn, anio_raw, idioma, libro_id, editorial, formato, paginas_raw]):
             flash("Todos los campos son obligatorios.", "danger")
             return render_template('ediciones/editar.html', edicion=edicion, libros=libros)
-        
-        # Verificar que el nuevo ISBN no exista en otra edición
+
+        # Mantener ISBN único (excluyendo la edición actual)
         existing_isbn = biblioteca.db.ediciones.find_one({
-            "ISBN": isbn, 
+            "ISBN": isbn,
             "_id": {"$ne": ObjectId(edicion_id)}
         })
-        
         if existing_isbn:
             flash(f"Ya existe otra edición con el ISBN {isbn}.", "danger")
             return render_template('ediciones/editar.html', edicion=edicion, libros=libros)
-        
+
+        # Año
         try:
-            anio = int(anio)
+            anio = int(anio_raw)
         except ValueError:
             flash("El año debe ser un número.", "danger")
             return render_template('ediciones/editar.html', edicion=edicion, libros=libros)
-        
+
+        from datetime import datetime
+        current_year = datetime.now().year
+        if anio < 1450 or anio > current_year + 1:
+            flash(f"El año debe estar entre 1450 y {current_year + 1}.", "danger")
+            return render_template('ediciones/editar.html', edicion=edicion, libros=libros)
+
+        # Páginas
+        try:
+            paginas = int(paginas_raw)
+            if paginas <= 0:
+                raise ValueError
+        except ValueError:
+            flash("Páginas debe ser un entero positivo.", "danger")
+            return render_template('ediciones/editar.html', edicion=edicion, libros=libros)
+
+        # Formato
+        formatos_validos = {"tapa_dura", "tapa_blanda", "ebook", "audiolibro"}
+        if formato not in formatos_validos:
+            flash("Formato inválido.", "danger")
+            return render_template('ediciones/editar.html', edicion=edicion, libros=libros)
+
         biblioteca.db.ediciones.update_one(
             {"_id": ObjectId(edicion_id)},
-            {
-                "$set": {
-                    "ISBN": isbn,
-                    "anio": anio,
-                    "idioma": idioma,
-                    "libro_id": ObjectId(libro_id)
-                }
-            }
+            {"$set": {
+                "ISBN": isbn,
+                "anio": anio,
+                "idioma": idioma,
+                "libro_id": ObjectId(libro_id),
+                "editorial": editorial,
+                "formato": formato,
+                "paginas": paginas
+            }}
         )
-        
+
         flash("Edición actualizada correctamente.", "success")
         return redirect(url_for('listar_ediciones'))
-    
+
     return render_template('ediciones/editar.html', edicion=edicion, libros=libros)
+
 
 @app.route('/ediciones/eliminar/<edicion_id>', methods=['GET', 'POST'])
 def eliminar_edicion(edicion_id):
     """Eliminar una edición"""
-    # Obtener la edición con información del libro
     pipeline = [
-        {
-            "$match": {"_id": ObjectId(edicion_id)}
-        },
-        {
-            "$lookup": {
-                "from": "libros",
-                "localField": "libro_id",
-                "foreignField": "_id",
-                "as": "libro_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$libro_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        }
+        {"$match": {"_id": ObjectId(edicion_id)}},
+        {"$lookup": {
+            "from": "libros",
+            "localField": "libro_id",
+            "foreignField": "_id",
+            "as": "libro_info"
+        }},
+        {"$unwind": {"path": "$libro_info", "preserveNullAndEmptyArrays": True}}
     ]
-    
     resultado = list(biblioteca.db.ediciones.aggregate(pipeline))
     if not resultado:
         flash("No se encontró la edición.", "danger")
         return redirect(url_for('listar_ediciones'))
-    
+
     edicion = resultado[0]
-    
+
     if request.method == 'POST':
-        # Verificar si la edición tiene copias asociadas
         copias = biblioteca.db.copias.count_documents({"edicion_id": ObjectId(edicion_id)})
-        
         if copias > 0:
             flash(f"No se puede eliminar. La edición tiene {copias} copias asociadas.", "danger")
-        else:
-            biblioteca.db.ediciones.delete_one({"_id": ObjectId(edicion_id)})
-            flash("Edición eliminada correctamente.", "success")
-        
+            return redirect(url_for('listar_ediciones'))
+
+        biblioteca.db.ediciones.delete_one({"_id": ObjectId(edicion_id)})
+        flash("Edición eliminada correctamente.", "success")
         return redirect(url_for('listar_ediciones'))
-    
+
     return render_template('ediciones/eliminar.html', edicion=edicion)
+
 
 # =================== GESTIÓN DE COPIAS ===================
 @app.route('/copias')
@@ -959,333 +1032,272 @@ def ver_usuario(usuario_id):
                           prestamos_activos=prestamos_activos, 
                           historial_prestamos=historial_prestamos)
 
-# =================== GESTIÓN DE PRÉSTAMOS ===================
+
+# =================== FILTROS JINJA ===================
 @app.template_filter('timediff')
 def timediff_filter(fecha):
-    """
-    Filtro para calcular la diferencia de tiempo entre una fecha y ahora
-    """
+    """Devuelve un timedelta entre ahora y 'fecha' (ahora - fecha)."""
     ahora = datetime.datetime.now()
     return ahora - fecha
 
+@app.template_filter('dias_restantes')
+def dias_restantes_filter(fecha_limite):
+    """Días restantes (int) hasta 'fecha_limite'; 0 si ya venció o no hay fecha."""
+    if not fecha_limite:
+        return 0
+    diff = fecha_limite - datetime.datetime.now()
+    return diff.days if diff.days > 0 else 0
+
+@app.template_filter('dias_retraso')
+def dias_retraso_filter(fecha_limite):
+    """Días de retraso (int) desde 'fecha_limite'; 0 si aún no venció o no hay fecha."""
+    if not fecha_limite:
+        return 0
+    diff = datetime.datetime.now() - fecha_limite
+    return diff.days if diff.days > 0 else 0
+
+@app.template_filter('es_atrasado')
+def es_atrasado_filter(fecha_limite):
+    """True si hoy ya pasó la 'fecha_limite'."""
+    if not fecha_limite:
+        return False
+    return datetime.datetime.now() > fecha_limite
+
+
+# =================== GESTIÓN DE PRÉSTAMOS ===================
+
 @app.route('/prestamos')
 def listar_prestamos_activos():
-    """Listar préstamos activos"""
+    """Listar préstamos activos (sin fecha_devolucion)."""
     pipeline = [
-        {
-            "$match": {
-                "fecha_devolucion": None
-            }
-        },
-        {
-            "$lookup": {
-                "from": "usuarios",
-                "localField": "usuario_id",
-                "foreignField": "_id",
-                "as": "usuario_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$usuario_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "copias",
-                "localField": "copia_id",
-                "foreignField": "_id",
-                "as": "copia_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$copia_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "ediciones",
-                "localField": "copia_info.edicion_id",
-                "foreignField": "_id",
-                "as": "edicion_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$edicion_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "libros",
-                "localField": "edicion_info.libro_id",
-                "foreignField": "_id",
-                "as": "libro_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$libro_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        }
+        {"$match": {"fecha_devolucion": None}},
+        {"$lookup": {
+            "from": "usuarios",
+            "localField": "usuario_id",
+            "foreignField": "_id",
+            "as": "usuario_info"
+        }},
+        {"$unwind": {"path": "$usuario_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "copias",
+            "localField": "copia_id",
+            "foreignField": "_id",
+            "as": "copia_info"
+        }},
+        {"$unwind": {"path": "$copia_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "ediciones",
+            "localField": "copia_info.edicion_id",
+            "foreignField": "_id",
+            "as": "edicion_info"
+        }},
+        {"$unwind": {"path": "$edicion_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "libros",
+            "localField": "edicion_info.libro_id",
+            "foreignField": "_id",
+            "as": "libro_info"
+        }},
+        {"$unwind": {"path": "$libro_info", "preserveNullAndEmptyArrays": True}},
+        # ordenar por fecha_límite asc para ver primero lo urgente
+        {"$sort": {"fecha_limite": 1, "fecha_prestamo": -1}}
     ]
-    
     prestamos = list(biblioteca.db.prestamos.aggregate(pipeline))
     return render_template('prestamos/listar_activos.html', prestamos=prestamos)
 
+
 @app.route('/prestamos/historial')
 def listar_historial_prestamos():
-    """Listar historial de préstamos"""
+    """Listar historial de préstamos (todos, devueltos o no)."""
     pipeline = [
-        {
-            "$lookup": {
-                "from": "usuarios",
-                "localField": "usuario_id",
-                "foreignField": "_id",
-                "as": "usuario_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$usuario_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "copias",
-                "localField": "copia_id",
-                "foreignField": "_id",
-                "as": "copia_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$copia_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "ediciones",
-                "localField": "copia_info.edicion_id",
-                "foreignField": "_id",
-                "as": "edicion_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$edicion_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "libros",
-                "localField": "edicion_info.libro_id",
-                "foreignField": "_id",
-                "as": "libro_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$libro_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$sort": {
-                "fecha_prestamo": -1
-            }
-        }
+        {"$lookup": {
+            "from": "usuarios",
+            "localField": "usuario_id",
+            "foreignField": "_id",
+            "as": "usuario_info"
+        }},
+        {"$unwind": {"path": "$usuario_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "copias",
+            "localField": "copia_id",
+            "foreignField": "_id",
+            "as": "copia_info"
+        }},
+        {"$unwind": {"path": "$copia_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "ediciones",
+            "localField": "copia_info.edicion_id",
+            "foreignField": "_id",
+            "as": "edicion_info"
+        }},
+        {"$unwind": {"path": "$edicion_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "libros",
+            "localField": "edicion_info.libro_id",
+            "foreignField": "_id",
+            "as": "libro_info"
+        }},
+        {"$unwind": {"path": "$libro_info", "preserveNullAndEmptyArrays": True}},
+        {"$sort": {"fecha_prestamo": -1}}
     ]
-    
     prestamos = list(biblioteca.db.prestamos.aggregate(pipeline))
     return render_template('prestamos/historial.html', prestamos=prestamos)
 
+
 @app.route('/prestamos/registrar', methods=['GET', 'POST'])
 def registrar_prestamo():
-    """Registrar un nuevo préstamo"""
+    """
+    Registrar un nuevo préstamo.
+    - Guarda fecha_prestamo = ahora.
+    - Requiere fecha_limite (YYYY-MM-DD); se guarda a las 23:59:59 de ese día.
+    - Reserva la copia de forma atómica (evita carreras).
+    """
     usuarios = list(biblioteca.db.usuarios.find())
-    
     if not usuarios:
         flash("No hay usuarios registrados. Primero debe agregar usuarios.", "warning")
         return redirect(url_for('agregar_usuario'))
-    
-    # Obtener copias disponibles
+
+    # Copias disponibles con info de edición/libro
     pipeline = [
-        {
-            "$match": {
-                "disponible": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "ediciones",
-                "localField": "edicion_id",
-                "foreignField": "_id",
-                "as": "edicion_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$edicion_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "libros",
-                "localField": "edicion_info.libro_id",
-                "foreignField": "_id",
-                "as": "libro_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$libro_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        }
+        {"$match": {"disponible": True}},
+        {"$lookup": {
+            "from": "ediciones",
+            "localField": "edicion_id",
+            "foreignField": "_id",
+            "as": "edicion_info"
+        }},
+        {"$unwind": {"path": "$edicion_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "libros",
+            "localField": "edicion_info.libro_id",
+            "foreignField": "_id",
+            "as": "libro_info"
+        }},
+        {"$unwind": {"path": "$libro_info", "preserveNullAndEmptyArrays": True}}
     ]
-    
     copias_disponibles = list(biblioteca.db.copias.aggregate(pipeline))
-    
     if not copias_disponibles:
         flash("No hay copias disponibles para préstamo.", "warning")
         return redirect(url_for('listar_prestamos_activos'))
-    
+
     if request.method == 'POST':
         usuario_id = request.form.get('usuario_id')
         copia_id = request.form.get('copia_id')
-        
-        if not usuario_id or not copia_id:
-            flash("Debe seleccionar un usuario y una copia.", "danger")
+        fecha_limite_str = (request.form.get('fecha_limite') or '').strip()  # YYYY-MM-DD
+
+        if not usuario_id or not copia_id or not fecha_limite_str:
+            flash("Debe seleccionar usuario, copia y fecha límite.", "danger")
             return render_template('prestamos/registrar.html', usuarios=usuarios, copias=copias_disponibles)
-        
-        # Registrar el préstamo
+
+        # Parsear fecha límite al final del día (23:59:59)
+        try:
+            fecha_limite_date = datetime.datetime.strptime(fecha_limite_str, "%Y-%m-%d").date()
+            fecha_limite = datetime.datetime.combine(fecha_limite_date, datetime.time(23, 59, 59))
+        except ValueError:
+            flash("Fecha límite inválida. Use el formato AAAA-MM-DD.", "danger")
+            return render_template('prestamos/registrar.html', usuarios=usuarios, copias=copias_disponibles)
+
+        ahora = datetime.datetime.now()
+        if fecha_limite < ahora.replace(hour=0, minute=0, second=0, microsecond=0):
+            flash("La fecha límite debe ser hoy o posterior.", "danger")
+            return render_template('prestamos/registrar.html', usuarios=usuarios, copias=copias_disponibles)
+
+        # Reservar la copia de manera atómica (evita carrera)
+        reserva = biblioteca.db.copias.update_one(
+            {"_id": ObjectId(copia_id), "disponible": True},
+            {"$set": {"disponible": False}}
+        )
+        if reserva.modified_count == 0:
+            flash("La copia seleccionada ya no está disponible.", "danger")
+            return redirect(url_for('registrar_prestamo'))
+
+        # Insertar el préstamo
         prestamo_data = {
             "usuario_id": ObjectId(usuario_id),
             "copia_id": ObjectId(copia_id),
-            "fecha_prestamo": datetime.datetime.now(),
+            "fecha_prestamo": ahora,
+            "fecha_limite": fecha_limite,
             "fecha_devolucion": None
         }
-        
         prestamo_id = biblioteca.db.prestamos.insert_one(prestamo_data).inserted_id
-        
-        # Actualizar el estado de la copia a no disponible
-        biblioteca.db.copias.update_one(
-            {"_id": ObjectId(copia_id)},
-            {"$set": {"disponible": False}}
-        )
-        
+
         flash(f"Préstamo registrado correctamente con ID: {prestamo_id}", "success")
         return redirect(url_for('listar_prestamos_activos'))
-    
+
     return render_template('prestamos/registrar.html', usuarios=usuarios, copias=copias_disponibles)
+
 
 @app.route('/prestamos/devolver/<prestamo_id>', methods=['GET', 'POST'])
 def registrar_devolucion(prestamo_id):
-    """Registrar la devolución de un préstamo"""
-    # Obtener información detallada del préstamo
+    """
+    Registrar la devolución de un préstamo.
+    - Marca fecha_devolucion = ahora.
+    - Vuelve a marcar la copia como disponible.
+    """
+    # Obtener préstamo con joins
     pipeline = [
-        {
-            "$match": {"_id": ObjectId(prestamo_id)}
-        },
-        {
-            "$lookup": {
-                "from": "usuarios",
-                "localField": "usuario_id",
-                "foreignField": "_id",
-                "as": "usuario_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$usuario_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "copias",
-                "localField": "copia_id",
-                "foreignField": "_id",
-                "as": "copia_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$copia_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "ediciones",
-                "localField": "copia_info.edicion_id",
-                "foreignField": "_id",
-                "as": "edicion_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$edicion_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        },
-        {
-            "$lookup": {
-                "from": "libros",
-                "localField": "edicion_info.libro_id",
-                "foreignField": "_id",
-                "as": "libro_info"
-            }
-        },
-        {
-            "$unwind": {
-                "path": "$libro_info",
-                "preserveNullAndEmptyArrays": True
-            }
-        }
+        {"$match": {"_id": ObjectId(prestamo_id)}},
+        {"$lookup": {
+            "from": "usuarios",
+            "localField": "usuario_id",
+            "foreignField": "_id",
+            "as": "usuario_info"
+        }},
+        {"$unwind": {"path": "$usuario_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "copias",
+            "localField": "copia_id",
+            "foreignField": "_id",
+            "as": "copia_info"
+        }},
+        {"$unwind": {"path": "$copia_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "ediciones",
+            "localField": "copia_info.edicion_id",
+            "foreignField": "_id",
+            "as": "edicion_info"
+        }},
+        {"$unwind": {"path": "$edicion_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "libros",
+            "localField": "edicion_info.libro_id",
+            "foreignField": "_id",
+            "as": "libro_info"
+        }},
+        {"$unwind": {"path": "$libro_info", "preserveNullAndEmptyArrays": True}}
     ]
-    
     resultado = list(biblioteca.db.prestamos.aggregate(pipeline))
     if not resultado:
         flash("No se encontró el préstamo.", "danger")
         return redirect(url_for('listar_prestamos_activos'))
-    
+
     prestamo = resultado[0]
-    
-    # Verificar que el préstamo no haya sido devuelto
+
     if prestamo.get('fecha_devolucion'):
         flash("Este préstamo ya ha sido devuelto.", "warning")
         return redirect(url_for('listar_prestamos_activos'))
-    
+
     if request.method == 'POST':
-        # Registrar la devolución
         fecha_devolucion = datetime.datetime.now()
-        
+
+        # Actualizar préstamo
         biblioteca.db.prestamos.update_one(
             {"_id": ObjectId(prestamo_id)},
             {"$set": {"fecha_devolucion": fecha_devolucion}}
         )
-        
-        # Actualizar el estado de la copia a disponible
-        biblioteca.db.copias.update_one(
-            {"_id": prestamo.get('copia_info', {}).get('_id')},
-            {"$set": {"disponible": True}}
-        )
-        
+
+        # Liberar copia
+        if prestamo.get('copia_info') and prestamo['copia_info'].get('_id'):
+            biblioteca.db.copias.update_one(
+                {"_id": prestamo['copia_info']['_id']},
+                {"$set": {"disponible": True}}
+            )
+
         flash("Devolución registrada correctamente.", "success")
         return redirect(url_for('listar_prestamos_activos'))
-    
+
     return render_template('prestamos/devolver.html', prestamo=prestamo)
+
 
 
 # =================== CONSULTAS ===================

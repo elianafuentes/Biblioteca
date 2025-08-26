@@ -1,146 +1,125 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registrar Préstamo - Sistema de Biblioteca</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome para iconos -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Select2 CSS para mejorar los selectores -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrar Préstamo - Sistema de Biblioteca</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/"><i class="fas fa-book-open me-2"></i>Sistema de Biblioteca</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">Inicio</a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
-                            Préstamos
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('listar_prestamos_activos') }}">Préstamos Activos</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('listar_historial_prestamos') }}">Historial de Préstamos</a></li>
-                            <li><a class="dropdown-item active" href="{{ url_for('registrar_prestamo') }}">Registrar Préstamo</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1><i class="fas fa-plus-circle me-2"></i>Registrar Nuevo Préstamo</h1>
-            <a href="{{ url_for('listar_prestamos_activos') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Volver a Préstamos
-            </a>
-        </div>
-
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Inicio</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('listar_prestamos_activos') }}">Préstamos</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Registrar Préstamo</li>
-            </ol>
-        </nav>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h5 class="card-title mb-0">Formulario de registro de préstamo</h5>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('registrar_prestamo') }}">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="usuario_id" class="form-label">Usuario</label>
-                            <select class="form-select select2" id="usuario_id" name="usuario_id" required>
-                                <option value="">Seleccione un usuario</option>
-                                {% for usuario in usuarios %}
-                                    <option value="{{ usuario._id }}">
-                                        {{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.RUT }})
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="copia_id" class="form-label">Libro (Copia)</label>
-                            <select class="form-select select2" id="copia_id" name="copia_id" required>
-                                <option value="">Seleccione un libro</option>
-                                {% for copia in copias %}
-                                    <option value="{{ copia._id }}">
-                                        {{ copia.libro_info.titulo }} - 
-                                        {% if copia.edicion_info %}
-                                            {{ copia.edicion_info.editorial }} ({{ copia.edicion_info.anio }})
-                                        {% endif %}
-                                        - Copia #{{ copia.numero }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="col-12 mt-4">
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i>
-                                La fecha de préstamo se registrará automáticamente con la fecha y hora actual.
-                            </div>
-                        </div>
-                        
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Registrar Préstamo
-                            </button>
-                            <a href="{{ url_for('listar_prestamos_activos') }}" class="btn btn-outline-secondary">
-                                Cancelar
-                            </a>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container">
+    <a class="navbar-brand" href="/"><i class="fas fa-book-open me-2"></i>Sistema de Biblioteca</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Inicio</a></li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">Préstamos</a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{{ url_for('listar_prestamos_activos') }}">Préstamos Activos</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('listar_historial_prestamos') }}">Historial de Préstamos</a></li>
+            <li><a class="dropdown-item active" href="{{ url_for('registrar_prestamo') }}">Registrar Préstamo</a></li>
+          </ul>
+        </li>
+      </ul>
     </div>
+  </div>
+</nav>
 
-    <footer class="bg-dark text-white py-4 mt-5">
-        <div class="container text-center">
-            <p>&copy; 2025 Sistema de Gestión de Biblioteca</p>
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-plus-circle me-2"></i>Registrar Nuevo Préstamo</h1>
+    <a href="{{ url_for('listar_prestamos_activos') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-left me-2"></i>Volver a Préstamos
+    </a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show">
+          {{ message }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-    </footer>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Select2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('.select2').select2({
-                theme: 'bootstrap-5',
-                width: '100%'
-            });
-        });
-    </script>
+  <div class="card shadow-sm">
+    <div class="card-header bg-light">
+      <h5 class="card-title mb-0">Formulario de registro de préstamo</h5>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('registrar_prestamo') }}">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="usuario_id" class="form-label">Usuario</label>
+            <select class="form-select select2" id="usuario_id" name="usuario_id" required>
+              <option value="">Seleccione un usuario</option>
+              {% for usuario in usuarios %}
+                <option value="{{ usuario._id }}">{{ usuario.nombre }} {{ usuario.apellido }} ({{ usuario.RUT }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label for="copia_id" class="form-label">Libro (Copia)</label>
+            <select class="form-select select2" id="copia_id" name="copia_id" required>
+              <option value="">Seleccione un libro</option>
+              {% for copia in copias %}
+                <option value="{{ copia._id }}">
+                  {{ copia.libro_info.titulo }}
+                  {% if copia.edicion_info %} — {{ copia.edicion_info.editorial }} ({{ copia.edicion_info.anio }}){% endif %}
+                  — Copia #{{ copia.numero }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label for="fecha_limite" class="form-label">Fecha límite de devolución</label>
+            <input type="date" class="form-control" id="fecha_limite" name="fecha_limite" required>
+            <div class="form-text">La devolución debe realizarse a más tardar en esta fecha.</div>
+          </div>
+
+          <div class="col-12 mt-2">
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle me-2"></i>
+              La <strong>fecha de préstamo</strong> se registra automáticamente con la fecha y hora actuales.
+            </div>
+          </div>
+
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save me-2"></i>Registrar Préstamo
+            </button>
+            <a href="{{ url_for('listar_prestamos_activos') }}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<footer class="bg-dark text-white py-4 mt-5">
+  <div class="container text-center"><p>&copy; 2025 Sistema de Gestión de Biblioteca</p></div>
+</footer>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  $(function(){
+    $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
+    // Establecer mínimo = hoy para fecha límite
+    const hoy = new Date().toISOString().split('T')[0];
+    $('#fecha_limite').attr('min', hoy);
+  });
+</script>
 </body>
 </html>

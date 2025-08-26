@@ -69,7 +69,22 @@
                             <input type="text" class="form-control" id="titulo" name="titulo" required
                                    value="{{ libro.titulo }}" placeholder="Ingrese el título del libro">
                         </div>
-                        
+
+                        <div class="mb-3">
+                            <label for="anio_publicacion" class="form-label">Año de publicación</label>
+                            <input type="number" class="form-control" id="anio_publicacion" name="anio_publicacion"
+                                   min="1450" max="2100"
+                                   value="{{ libro.anio_publicacion if libro.anio_publicacion is not none else '' }}"
+                                   placeholder="Ej: 2007">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="genero" class="form-label">Género</label>
+                            <input type="text" class="form-control" id="genero" name="genero"
+                                   value="{{ libro.genero if libro.genero else '' }}"
+                                   placeholder="Ej: Novela, Ciencia Ficción, Ensayo">
+                        </div>
+
                         <div class="mb-3">
                             <label for="autores" class="form-label">Autores</label>
                             <select class="form-select select2" id="autores" name="autores" multiple required>
@@ -79,14 +94,14 @@
                                     </option>
                                 {% endfor %}
                             </select>
-                            <div class="form-text">Seleccione uno o más autores para el libro. Para seleccionar múltiples autores, mantenga presionada la tecla Ctrl.</div>
+                            <div class="form-text">Seleccione uno o más autores. Use Ctrl (o Cmd en Mac) para selección múltiple.</div>
                         </div>
-                        
+
                         <!-- Visualización de ediciones actuales (solo informativo) -->
                         {% set ediciones = biblioteca.db.ediciones.find({"libro_id": libro._id}) %}
                         {% set total_ediciones = biblioteca.db.ediciones.count_documents({"libro_id": libro._id}) %}
                         <div class="mb-3">
-                            <label class="form-label">Ediciones actuales:</label>
+                            <label class="form-label">Ediciones actuales ({{ total_ediciones }}):</label>
                             <div class="card">
                                 <div class="card-body">
                                     <table class="table table-sm table-striped">
@@ -105,13 +120,18 @@
                                                     <td>{{ edicion.idioma }}</td>
                                                 </tr>
                                             {% endfor %}
+                                            {% if (total_ediciones or 0) == 0 %}
+                                                <tr>
+                                                    <td colspan="3" class="text-center text-muted">No hay ediciones registradas.</td>
+                                                </tr>
+                                            {% endif %}
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
                             <div class="form-text">Para gestionar ediciones, use la sección Ediciones del menú principal.</div>
                         </div>
-                        
+
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <a href="{{ url_for('listar_libros') }}" class="btn btn-secondary me-md-2">
                                 <i class="fas fa-times me-1"></i>Cancelar
@@ -149,7 +169,6 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Inicializar Select2
             $('.select2').select2({
                 placeholder: "Seleccione los autores",
                 allowClear: true,

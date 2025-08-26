@@ -68,7 +68,20 @@
                         <input type="text" class="form-control" id="titulo" name="titulo" required
                                placeholder="Ingrese el título del libro">
                     </div>
-                    
+
+                    <div class="mb-3">
+                        <label for="anio_publicacion" class="form-label">Año de publicación</label>
+                        <input type="number" class="form-control" id="anio_publicacion" name="anio_publicacion"
+                               min="1450" max="2100" required placeholder="Ej: 2007">
+                        <div class="form-text">Ingrese el año en que se publicó el libro.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="genero" class="form-label">Género</label>
+                        <input type="text" class="form-control" id="genero" name="genero" required
+                               placeholder="Ej: Novela, Ciencia Ficción, Ensayo">
+                    </div>
+
                     <div class="mb-3">
                         <label for="autores" class="form-label">Autores</label>
                         <select class="form-select select2" id="autores" name="autores" multiple required>
@@ -76,9 +89,9 @@
                                 <option value="{{ autor._id }}">{{ autor.nombre }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-text">Seleccione uno o más autores para el libro. Para seleccionar múltiples autores, mantenga presionada la tecla Ctrl.</div>
+                        <div class="form-text">Seleccione uno o más autores. Use Ctrl (o Cmd en Mac) para selección múltiple.</div>
                     </div>
-                    
+
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <a href="{{ url_for('listar_libros') }}" class="btn btn-secondary me-md-2">
                             <i class="fas fa-times me-1"></i>Cancelar
@@ -106,7 +119,6 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Inicializar Select2
             $('.select2').select2({
                 placeholder: "Seleccione los autores",
                 allowClear: true,
